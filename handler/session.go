@@ -25,8 +25,7 @@ func (h *SessionHandler) DropSession(c *gin.Context) {
 		return
 	}
 	if st == "OK" {
-		entity.SetMsg("清除session成功！")
-		entity.SetCode(200)
+		entity.SetCodeAndMsg(500, "清除session成功！")
 	}
 	c.JSON(200, gin.H{"entity": entity})
 	return

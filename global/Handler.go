@@ -76,6 +76,7 @@ func initHandler() {
 			},
 		},
 	}
+
 	SessionHandler = handler.SessionHandler{
 		SessionSrvI: &service.SessionService{
 			SessionRepo: &repository.SessionRepository{
@@ -83,6 +84,7 @@ func initHandler() {
 			},
 		},
 	}
+
 	CommonHandler = handler.CommonHandler{
 		CommonSrvI: &service.CommonService{
 			CommonRepo: &repository.CommonRepository{
@@ -90,6 +92,7 @@ func initHandler() {
 			},
 		},
 	}
+
 	PayHandler = handler.PayHandler{}
 	BlockHandler = handler.BlockHandler{
 		BlockSrvI: &service.BlockService{
@@ -98,6 +101,7 @@ func initHandler() {
 			},
 		},
 	}
+
 	OrderHandler = handler.OrderHandler{
 		OrderSrvI: &service.OrderService{
 			OrderRepo: &repository.OrderRepository{
@@ -108,6 +112,7 @@ func initHandler() {
 			},
 		},
 	}
+
 	CommodityHandler = handler.CommodityHandler{
 		CommoditySrvI: &service.CommodityService{
 			CommodityRepo: &repository.CommodityRepository{

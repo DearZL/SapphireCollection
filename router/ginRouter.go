@@ -5,18 +5,14 @@ import (
 	"P/midware"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"log"
 )
 
 func NewRouter() *gin.Engine {
 	r := gin.Default()
-	err := r.SetTrustedProxies(nil)
-	if err != nil {
-		log.Println(err.Error())
-	}
+	_ = r.SetTrustedProxies(nil)
 	gin.SetMode("debug")
 	r.Use(sessions.Sessions("LD_S", midware.Store)).Use(midware.Cors())
-	r.Use()
+
 	pay := r.Group("/api/pay")
 	{
 		pay.GET("/pay", global.PayHandler.Pay)
@@ -46,9 +42,11 @@ func NewRouter() *gin.Engine {
 		user.GET("/userInfo", midware.CheckToken(), global.UserHandler.UserInfo)
 		user.POST("/editUser", midware.CheckToken(), global.UserHandler.EditUser)
 	}
+
 	order := r.Group("/api/order")
 	{
 		order.GET("/create", global.OrderHandler.CreateOrder)
 	}
+
 	return r
 }

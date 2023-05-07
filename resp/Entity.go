@@ -1,5 +1,7 @@
 package resp
 
+import "github.com/gin-gonic/gin"
+
 type EntityA struct {
 	Code  int         `json:"code"`
 	Msg   string      `json:"msg"`
@@ -9,21 +11,19 @@ type EntityA struct {
 type EntityB struct {
 	Total     int `json:"total"`
 	TotalPage int `json:"totalPage"`
-	*EntityA
+	EntityA
 }
 
-func (e *EntityA) SetMsg(s string) {
+func (e *EntityA) SetCodeAndMsg(code int, s string) {
+	e.Code = code
 	e.Msg = s
 }
-func (e *EntityA) SetCode(i int) {
-	e.Code = i
+
+func (e *EntityA) SetToken(c *gin.Context) {
+	token, _ := c.Get("token")
+	e.Token = token.(string)
 }
-func (e *EntityB) SetMsg(s string) {
-	e.SetMsg(s)
-}
-func (e *EntityB) SetCode(i int) {
-	e.SetCode(i)
-}
+
 func (e *EntityB) SetTotal(Total int, TotalPage int) {
 	e.Total = Total
 	e.TotalPage = TotalPage

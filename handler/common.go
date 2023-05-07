@@ -50,10 +50,9 @@ func (h *CommonHandler) Upload(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	token := c.Request.Header.Get("Authorization")
-	entity.SetMsg("上传成功！")
-	entity.SetCode(200)
-	entity.Data = token
+
+	entity.SetCodeAndMsg(200, "上传成功！")
+	entity.SetToken(c)
 	c.JSON(200, gin.H{"entity": entity})
 	return
 }
@@ -66,7 +65,7 @@ func (h *CommonHandler) Download(c *gin.Context) {
 	}
 	filename := c.Param("filename")
 	if filename == "" {
-		entity.SetMsg("参数错误！")
+		entity.SetCodeAndMsg(500, "参数错误！")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}

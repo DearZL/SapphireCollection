@@ -4,7 +4,6 @@ import (
 	"P/global"
 	"P/resp"
 	"P/utils"
-	"errors"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -97,13 +96,12 @@ func CheckToken() gin.HandlerFunc {
 }
 
 func init() {
-	Store, _ = redis.NewStoreWithDB(2000, "tcp", "192.168.124.6:6379", "", "1", []byte("Zhoul0722"))
-	if Store == nil {
-		err := errors.New("创建Session存储器失败！")
-		if err != nil {
-			panic(err.Error())
-			return
-		}
+	var err error
+	Store, err = redis.NewStoreWithDB(2000, "tcp", "192.168.124.6:6379", "", "1", []byte("Zhoul0722"))
+	if err != nil {
+		panic(err.Error())
+		return
 	}
-	//Store = gorm.NewStore(global.DB, true, []byte("ZhouL0722"))
 }
+
+//Store = gorm.NewStore(global.DB, true, []byte("ZhouL0722"))

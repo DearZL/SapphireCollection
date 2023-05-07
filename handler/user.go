@@ -29,19 +29,18 @@ func (h *UserHandler) CheckEmail(c *gin.Context) {
 	}
 	u := model.User{Email: c.Param("email")}
 	if u.Email == "" {
-		entity.SetMsg("邮箱不能为空！")
+		entity.SetCodeAndMsg(500, "邮箱不能为空！")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
 	//查询数据库中是否已经有该邮箱
 	r := h.UserSrvI.EmailExist(u)
 	if r != nil {
-		entity.SetMsg("该邮箱已被注册！")
+		entity.SetCodeAndMsg(500, "该邮箱已被注册！")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	entity.SetMsg("该邮箱可用")
-	entity.SetCode(200)
+	entity.SetCodeAndMsg(200, "该邮箱可用")
 	c.JSON(200, gin.H{"entity": entity})
 }
 
@@ -58,7 +57,7 @@ func (h *UserHandler) SendCode(c *gin.Context) {
 	//接收前端传来的email参数并放入user中的email字段
 	u.Email = c.Param("email")
 	if u.Email == "" {
-		entity.SetMsg("邮箱不能为空")
+		entity.SetCodeAndMsg(500, "邮箱不能为空")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
@@ -84,8 +83,7 @@ func (h *UserHandler) SendCode(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	entity.SetMsg("验证码发送成功")
-	entity.SetCode(200)
+	entity.SetCodeAndMsg(200, "验证码发送成功")
 	c.JSON(200, gin.H{"entity": entity})
 }
 
@@ -106,7 +104,7 @@ func (h *UserHandler) AddUser(c *gin.Context) {
 	}
 	//如果不含有email值则非法
 	if u.Email == "" || u.Password == "" {
-		entity.SetMsg("邮箱或密码不能为空!")
+		entity.SetCodeAndMsg(500, "邮箱或密码不能为空!")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
@@ -142,8 +140,7 @@ func (h *UserHandler) AddUser(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	entity.SetCode(200)
-	entity.SetMsg("注册成功！")
+	entity.SetCodeAndMsg(200, "注册成功！")
 	//将user转换为响应user类型避免暴露过多字段
 	entity.Data = user.ToRespUser()
 	c.JSON(200, gin.H{"entity": entity})
@@ -167,19 +164,19 @@ func (h *UserHandler) UserLogin(c *gin.Context) {
 		return
 	}
 	if u.Email == "" || u.Password == "" {
-		entity.SetMsg("邮箱密码不能为空！")
+		entity.SetCodeAndMsg(500, "邮箱密码不能为空！")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
 	//向数据库查询该邮箱是否存在
 	r := h.UserSrvI.EmailExist(*u)
 	if r == nil {
-		entity.SetMsg("该用户不存在，请检查邮箱或注册！")
+		entity.SetCodeAndMsg(500, "该用户不存在，请检查邮箱或注册！")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
 	if r.Status != false {
-		entity.SetMsg("该用户已被禁用")
+		entity.SetCodeAndMsg(500, "该用户已被禁用")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
@@ -191,7 +188,7 @@ func (h *UserHandler) UserLogin(c *gin.Context) {
 	}
 	//比对密码
 	if u.Password != user.Password {
-		entity.SetMsg("密码或邮箱错误，请检查后重新输入！")
+		entity.SetCodeAndMsg(500, "密码或邮箱错误，请检查后重新输入！")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
@@ -218,7 +215,7 @@ func (h *UserHandler) UserLogin(c *gin.Context) {
 		return
 	}
 	session := sessions.Default(c)
-	session.Options(sessions.Options{MaxAge: 3600 * 72, HttpOnly: true, Path: "/"})
+	session.Options(sessions.Options{MaxAge: 3600 * 24 * 14, HttpOnly: true, Path: "/"})
 	//将用户信息存入session
 	session.Set("user", user)
 	//保存
@@ -228,8 +225,7 @@ func (h *UserHandler) UserLogin(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	entity.SetMsg("登陆成功")
-	entity.SetCode(200)
+	entity.SetCodeAndMsg(200, "登陆成功")
 	//设置响应数据
 	entity.Token = token
 	entity.Data = user.ToRespUser()
@@ -250,7 +246,7 @@ func (h *UserHandler) UserInfo(c *gin.Context) {
 	session := sessions.Default(c)
 	userInfo := session.Get("user")
 	if userInfo == nil {
-		entity.SetMsg("您的会话已过期，请重新登录!")
+		entity.SetCodeAndMsg(500, "您的会话已过期，请重新登录!")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
@@ -263,8 +259,7 @@ func (h *UserHandler) UserInfo(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	entity.SetCode(200)
-	entity.SetMsg("OK")
+	entity.SetCodeAndMsg(200, "OK")
 	entity.Data = user.ToRespUser()
 	c.JSON(200, gin.H{"entity": entity})
 }
@@ -283,8 +278,7 @@ func (h *UserHandler) Logout(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	entity.SetMsg("退出成功！")
-	entity.SetCode(200)
+	entity.SetCodeAndMsg(200, "退出成功！")
 	c.Header("Authorization", "")
 	c.JSON(200, gin.H{"entity": entity})
 }
@@ -321,10 +315,8 @@ func (h *UserHandler) EditUser(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	entity.SetMsg("更改信息成功!")
-	entity.SetCode(200)
-	Token, _ := c.Get("token")
-	entity.Token = Token.(string)
+	entity.SetCodeAndMsg(200, "更改信息成功!")
+	entity.SetToken(c)
 	c.JSON(200, gin.H{"entity": entity})
 
 }
