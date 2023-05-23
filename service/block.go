@@ -4,13 +4,14 @@ import (
 	"P/model"
 	"P/repository"
 	"errors"
+	"gorm.io/gorm"
 	"log"
 	"os"
 )
 
 type BlockServiceInterface interface {
 	GetBlockChain(chain *model.Blockchain) error
-	AddBlock(cs *model.Commodities, chainId string) error
+	AddBlock(cs *model.Commodities, chainId string, tx1 ...*gorm.DB) error
 }
 
 type BlockService struct {
@@ -21,7 +22,7 @@ func (srv *BlockService) GetBlockChain(chain *model.Blockchain) error {
 	return srv.BlockRepo.GetBlockChain(chain)
 }
 
-func (srv *BlockService) AddBlock(cs *model.Commodities, chainId string) error {
+func (srv *BlockService) AddBlock(cs *model.Commodities, chainId string, tx0 ...*gorm.DB) error {
 	location := "./file/commodity/"
 	latestBlock := &model.Block{}
 	err := srv.BlockRepo.GetLastBlock(latestBlock)
@@ -41,24 +42,34 @@ func (srv *BlockService) AddBlock(cs *model.Commodities, chainId string) error {
 		chain.AddBlock(string(imageData))
 		com.Hash = chain.Blocks[len(chain.Blocks)-1].Hash
 	}
-	tx := srv.BlockRepo.GetDB().Begin()
+	var tx *gorm.DB
+	if len(tx0) != 0 {
+		tx = tx0[0]
+	} else {
+		tx = srv.BlockRepo.GetDB().Begin()
+	}
 	err = srv.BlockRepo.AddBlock(chain, tx)
 	if err != nil {
 		tx.Rollback()
 		log.Println("rollback")
 		return err
 	}
-	result := tx.Model(latestBlock).Where("hash=? AND version = ?", latestBlock.Hash, latestBlock.Version).Update("version", latestBlock.Version+1)
+	result := tx.Model(latestBlock).
+		Where("hash=? AND version = ?",
+			latestBlock.Hash, latestBlock.Version).
+		Update("version", latestBlock.Version+1)
 	if result.RowsAffected == 0 {
 		tx.Rollback()
 		log.Println("rollback")
 		return errors.New("事务执行期间已有其他事务提交,请放弃或重试")
 	}
-	err = tx.Commit().Error
-	if err != nil {
-		tx.Rollback()
-		log.Println("rollback")
-		return err
+	if len(tx0) == 0 {
+		err = tx.Commit().Error
+		if err != nil {
+			tx.Rollback()
+			log.Println("rollback")
+			return err
+		}
 	}
 	return nil
 }

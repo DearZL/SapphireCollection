@@ -93,23 +93,23 @@ func (pow *ProofOfWork) Validate() bool {
 	return isValid
 }
 
-func exmple() {
-	bc := NewBlockchain("0")
-	bc.AddBlock("Send 1 BTC to Ivan")
-	bc.AddBlock("Send 2 more BTC to Ivan")
-
-	pow := NewProofOfWork(bc.Blocks[1])
-	pow1 := NewProofOfWork(bc.Blocks[2])
-
-	for _, block := range bc.Blocks {
-		fmt.Printf("Prev. hash: %b\n", block.PrevBlockHash)
-		fmt.Printf("Data: %s\n", block.Data)
-		fmt.Printf("Hash: %b\n", block.Hash)
-		fmt.Printf("Nonce: %d\n", block.Nonce)
-
-		fmt.Println()
-	}
-	fmt.Println(pow.Target)
-	fmt.Println(pow1.Target)
-
-}
+//func exmple() {
+//	bc := NewBlockchain("0")
+//	bc.AddBlock("Send 1 BTC to Ivan")
+//	bc.AddBlock("Send 2 more BTC to Ivan")
+//
+//	pow := NewProofOfWork(bc.Blocks[1])
+//	pow1 := NewProofOfWork(bc.Blocks[2])
+//
+//	for _, block := range bc.Blocks {
+//		fmt.Printf("Prev. hash: %b\n", block.PrevBlockHash)
+//		fmt.Printf("Data: %s\n", block.Data)
+//		fmt.Printf("Hash: %b\n", block.Hash)
+//		fmt.Printf("Nonce: %d\n", block.Nonce)
+//
+//		fmt.Println()
+//	}
+//	fmt.Println(pow.Target)
+//	fmt.Println(pow1.Target)
+//
+//}

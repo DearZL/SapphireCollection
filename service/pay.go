@@ -114,6 +114,5 @@ func (srv *PayService) FindPayStatus(order *model.Order) (*alipay.TradeQueryRsp,
 		log.Println(err.Error())
 		return nil, err
 	}
-	fmt.Println(result.Content)
 	return result, nil
 }

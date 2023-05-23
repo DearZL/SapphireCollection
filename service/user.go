@@ -4,7 +4,9 @@ import (
 	"P/model"
 	"P/repository"
 	"P/utils"
+	"crypto/md5"
 	"errors"
+	"fmt"
 	"github.com/go-redis/redis"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/satori/go.uuid"
@@ -15,11 +17,11 @@ import (
 
 type UserSrvInterface interface {
 	EmailExist(user *model.User) *model.User
-	Add(user *model.User) (*model.User, error)
+	AddUser(user *model.User) (*model.User, error)
 	SendCode(code string, email string) error
 	UserLogin(user *model.User) (*model.User, string, error)
 	UserInfo(user *model.User) (*model.User, error)
-	Logout(sid string) error
+	Logout(sid string)
 	EditUser(user *model.User) error
 	EditUserStatus(userId string, status string) error
 }
@@ -27,9 +29,7 @@ type UserSrvInterface interface {
 type UserService struct {
 	Redis *redis.Client
 	//userDao
-	UserRepo repository.UserRepoInterface
-	//sessionDao
-	SessionRepo   repository.SessionRepositoryInterface
+	UserRepo      repository.UserRepoInterface
 	CommodityRepo repository.CommodityRepoInterface
 }
 
@@ -38,8 +38,8 @@ func (srv *UserService) EmailExist(user *model.User) *model.User {
 	return srv.UserRepo.EmailExist(user)
 }
 
-// Add 添加用户
-func (srv *UserService) Add(user *model.User) (*model.User, error) {
+// AddUser 添加用户
+func (srv *UserService) AddUser(user *model.User) (*model.User, error) {
 	// 如果不含有email值则非法
 	if user.Email == "" || user.Password == "" {
 		return nil, errors.New("邮箱或密码不能为空！")
@@ -48,12 +48,13 @@ func (srv *UserService) Add(user *model.User) (*model.User, error) {
 		return nil, errors.New("该邮箱已被注册！")
 	}
 	user.UserId = uuid.NewV4().String()
+	user.Password = fmt.Sprintf("%x", md5.Sum([]byte(user.Password)))
 	user, err := srv.UserRepo.Add(user)
 	if err != nil {
 		log.Println(err.Error())
-		return nil, err
+		return nil, errors.New("注册失败！")
 	}
-	return user, errors.New("注册失败！")
+	return user, nil
 }
 
 // SendCode 发送验证码
@@ -71,27 +72,26 @@ func (srv *UserService) UserLogin(user *model.User) (*model.User, string, error)
 	if user.Email == "" || user.Password == "" {
 		return nil, "", errors.New("邮箱密码不能为空！")
 	}
+	userTmp := &model.User{Email: user.Email}
 	// 向数据库查询该邮箱是否存在
-	r := srv.EmailExist(user)
+	r := srv.EmailExist(userTmp)
 	if r == nil {
 		return nil, "", errors.New("该用户不存在，请检查邮箱或注册！")
 	}
 	if r.Status != false {
 		return nil, "", errors.New("该用户已被禁用")
 	}
-	u := &model.User{}
-	u.Email = user.Email
-	u, err := srv.UserRepo.FindByEmail(u)
+	u, err := srv.UserRepo.FindByEmail(userTmp)
 	if err != nil {
 		return nil, "", errors.New("登陆失败,请重试")
 	}
 	// 比对密码
-	if u.Password != user.Password {
+	if u.Password != fmt.Sprintf("%x", md5.Sum([]byte(user.Password))) {
 		return nil, "", errors.New("密码或邮箱错误，请检查后重新输入！")
 	}
 	var d time.Duration
 	// 鉴别身份以生成不同有效期的token
-	if user.UserId == "Admin" {
+	if u.Group == "Admin" {
 		d = time.Duration(viper.GetInt64("loginTimeout.admin")) * time.Minute
 	} else {
 		d = time.Duration(viper.GetInt64("loginTimeout.user")) * time.Hour
@@ -99,8 +99,8 @@ func (srv *UserService) UserLogin(user *model.User) (*model.User, string, error)
 	t := time.Now().Add(d)
 	// 初始化一个claims结构体用以生成token
 	claims := utils.UserClaims{
-		UserId:    user.UserId,
-		UserGroup: user.Group,
+		UserId:    u.UserId,
+		UserGroup: u.Group,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(t),
 		},
@@ -111,8 +111,8 @@ func (srv *UserService) UserLogin(user *model.User) (*model.User, string, error)
 		return nil, "", errors.New("登陆失败,请重试")
 	}
 	// 向redis中写入userID和token
-	srv.Redis.Set(user.UserId, token, d)
-	return user, token, nil
+	srv.Redis.Set(u.UserId, token, d)
+	return u, token, nil
 }
 
 // UserInfo 查询用户信息
@@ -131,13 +131,9 @@ func (srv *UserService) UserInfo(user *model.User) (*model.User, error) {
 }
 
 // Logout 退出登录
-func (srv *UserService) Logout(sid string) error {
-	_, err := srv.SessionRepo.DeleteSession(sid)
-	if err != nil {
-		log.Println(err.Error())
-		return err
-	}
-	return nil
+func (srv *UserService) Logout(userId string) {
+	srv.Redis.Set(userId, "", 1*time.Millisecond)
+	return
 }
 
 // EditUser 编辑用户信息

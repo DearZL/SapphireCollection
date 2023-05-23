@@ -20,7 +20,6 @@ var (
 	Redis            *redis.Client
 	Redis1           *redis.Client
 	UserHandler      handler.UserHandler
-	SessionHandler   handler.SessionHandler
 	CommonHandler    handler.CommonHandler
 	PayHandler       handler.PayHandler
 	BlockHandler     handler.BlockHandler
@@ -85,18 +84,7 @@ func initHandler() {
 			UserRepo: &repository.UserRepository{
 				DB: DB,
 			},
-			SessionRepo: &repository.SessionRepository{
-				DB: DB,
-			},
 			CommodityRepo: &repository.CommodityRepository{
-				DB: DB,
-			},
-		},
-	}
-
-	SessionHandler = handler.SessionHandler{
-		SessionSrvI: &service.SessionService{
-			SessionRepo: &repository.SessionRepository{
 				DB: DB,
 			},
 		},
@@ -144,10 +132,10 @@ func initHandler() {
 			CommodityRepo: &repository.CommodityRepository{
 				DB: DB,
 			},
-		},
-		BlockSrvI: &service.BlockService{
-			BlockRepo: &repository.BlockRepository{
-				DB: DB,
+			BlockSrv: &service.BlockService{
+				BlockRepo: &repository.BlockRepository{
+					DB: DB,
+				},
 			},
 		},
 	}

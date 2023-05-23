@@ -32,15 +32,10 @@ func NewRouter() *gin.Engine {
 		})
 	}
 
-	session := r.Group("/api/session").Use(midware.CheckToken())
-	{
-		session.GET("/DropSession", global.SessionHandler.DropSession)
-	}
-
 	user := r.Group("/api/user").Use(midware.RequestFreq(5, 3))
 	{
 		user.GET("/checkEmail/:email", global.UserHandler.CheckEmail)
-		user.POST("/add/:code", global.UserHandler.AddUser)
+		user.POST("/userReg/:code", global.UserHandler.UserReg)
 		user.POST("/sendCode", global.UserHandler.SendCode)
 		user.POST("/login", global.UserHandler.UserLogin)
 		user.POST("/editUserPw", global.UserHandler.EditUserPw)

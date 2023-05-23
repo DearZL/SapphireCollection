@@ -5,6 +5,7 @@ import (
 	"P/resp"
 	"P/service"
 	"P/utils"
+	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -38,6 +39,7 @@ func (h *UserHandler) CheckEmail(c *gin.Context) {
 	}
 	entity.SetCodeAndMsg(200, "该邮箱可用")
 	c.JSON(200, gin.H{"entity": entity})
+	return
 }
 
 // SendCode 发送验证码
@@ -71,23 +73,23 @@ func (h *UserHandler) SendCode(c *gin.Context) {
 		return
 	}
 	//调用service层发送验证码
-	//if err := h.UserSrvI.SendCode(code, Email); err != nil {
-	//	log.Println(err.Error())
-	//	c.JSON(200, gin.H{"entity": entity})
-	//	return
-	//}
-	entity.Data = code
+	if err := h.UserSrvI.SendCode(code, Email); err != nil {
+		log.Println(err.Error())
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
 	entity.SetCodeAndMsg(200, "验证码发送成功")
 	c.JSON(200, gin.H{"entity": entity})
 	return
 }
 
-func (h *UserHandler) AddUser(c *gin.Context) {
+func (h *UserHandler) UserReg(c *gin.Context) {
 	entity := resp.EntityA{
 		Code: 500,
 		Msg:  "用户注册失败",
 		Data: nil,
 	}
+	// 若前端没有传回code则返回
 	if c.Param("code") == "" {
 		entity.SetCodeAndMsg(500, "验证码不能为空!")
 		c.JSON(200, gin.H{"entity": entity})
@@ -113,7 +115,7 @@ func (h *UserHandler) AddUser(c *gin.Context) {
 	// 取出该上下文中session中code的值
 	code := session.Get("code")
 	email := session.Get("email")
-	// 若前端没有传回code则返回
+	//预防空指针
 	if code == nil || email == nil {
 		entity.Msg = "您的验证码已过期或Cookie状态异常！"
 		c.JSON(200, gin.H{"entity": entity})
@@ -136,7 +138,7 @@ func (h *UserHandler) AddUser(c *gin.Context) {
 		return
 	}
 	// 调用service层添加该用户
-	user, err := h.UserSrvI.Add(addUser)
+	user, err := h.UserSrvI.AddUser(addUser)
 	if err != nil {
 		log.Println(err.Error())
 		entity.SetCodeAndMsg(500, err.Error())
@@ -148,6 +150,7 @@ func (h *UserHandler) AddUser(c *gin.Context) {
 	// 将user转换为响应user类型避免暴露过多字段
 	entity.Data = user.ToRespUser()
 	c.JSON(200, gin.H{"entity": entity})
+	return
 }
 
 func (h *UserHandler) UserLogin(c *gin.Context) {
@@ -216,6 +219,7 @@ func (h *UserHandler) UserInfo(c *gin.Context) {
 	entity.SetEntityAndHeaderToken(c)
 	entity.Data = user.ToRespUser()
 	c.JSON(200, gin.H{"entity": entity})
+	return
 }
 
 func (h *UserHandler) Logout(c *gin.Context) {
@@ -225,6 +229,14 @@ func (h *UserHandler) Logout(c *gin.Context) {
 		Data: nil,
 	}
 	session := sessions.Default(c)
+	userInfo := session.Get("user")
+	if userInfo == nil {
+		entity.SetCodeAndMsg(500, "您的会话已过期，请重新登录!")
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
+	fmt.Println(userInfo.(*model.User).UserId, "++++++++")
+	h.UserSrvI.Logout(userInfo.(*model.User).UserId)
 	session.Clear()
 	if err := session.Save(); err != nil {
 		log.Println(err.Error())
@@ -234,6 +246,7 @@ func (h *UserHandler) Logout(c *gin.Context) {
 	entity.SetCodeAndMsg(200, "退出成功！")
 	c.Header("Authorization", "")
 	c.JSON(200, gin.H{"entity": entity})
+	return
 }
 
 func (h *UserHandler) EditUserInfo(c *gin.Context) {
@@ -273,6 +286,7 @@ func (h *UserHandler) EditUserInfo(c *gin.Context) {
 	entity.SetCodeAndMsg(200, "更改信息成功!")
 	entity.SetEntityAndHeaderToken(c)
 	c.JSON(200, gin.H{"entity": entity})
+	return
 }
 
 func (h *UserHandler) EmailVerify(c *gin.Context) {
@@ -355,7 +369,7 @@ func (h *UserHandler) EditUserEmail(c *gin.Context) {
 	}
 	updateUser := &model.User{
 		UserId: result.UserId,
-		Email:  c.PostForm("newEmail"),
+		Email:  newEmail,
 	}
 	if err := h.UserSrvI.EditUser(updateUser); err != nil {
 		log.Println(err.Error())
@@ -456,7 +470,7 @@ func (h *UserHandler) AdminEditUser(c *gin.Context) {
 	//鉴权
 	userGroup, _ := c.Get("userGroup")
 	userId, _ := c.Get("userId")
-	if userGroup.(string) != "Admin" || (userId != "Admin" && user.Group != updateUser.Group) {
+	if userGroup.(string) != "Admin" || (userId != "Admin" && user.Group != result.Group) {
 		log.Println("非法请求")
 		entity.SetCodeAndMsg(500, "非法请求")
 		c.JSON(200, gin.H{"entity": entity})
