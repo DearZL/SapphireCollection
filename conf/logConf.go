@@ -2,9 +2,6 @@ package conf
 
 import "log"
 
-func DefaultConf() {
+func LogConf() {
 	log.SetFlags(log.Llongfile | log.Ldate | log.Ltime)
-}
-func init() {
-	DefaultConf()
 }

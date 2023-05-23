@@ -7,14 +7,17 @@ import (
 
 type Block struct {
 	gorm.Model
-	Timestamp     int64
-	Data          []byte
-	PrevBlockHash []byte
-	Hash          []byte
-	Nonce         int
+	Timestamp     int64  `json:"timestamp"`
+	Data          []byte `json:"data" gorm:"-"`
+	PrevBlockHash string `json:"prevBlockHash"`
+	Hash          string `json:"hash" gorm:"unique"`
+	Nonce         int    `json:"nonce"`
+	Version       uint   `json:"version" gorm:"default:0"`
+	ChainId       string `json:"chainId" gorm:"default:0"`
 }
 
 type Blockchain struct {
+	Id     string
 	Blocks []*Block
 }
 

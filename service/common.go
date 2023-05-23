@@ -16,6 +16,7 @@ type CommonServiceInterface interface {
 func (s *CommonService) Upload(files []model.File) error {
 	return s.CommonRepo.AddFile(files)
 }
+
 func (s *CommonService) Download(filename string) (*model.File, error) {
 	return s.CommonRepo.FindFile(filename)
 }

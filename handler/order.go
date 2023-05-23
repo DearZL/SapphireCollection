@@ -5,7 +5,7 @@ import (
 	"P/resp"
 	"P/service"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
+	"github.com/spf13/viper"
 	"log"
 	"time"
 )
@@ -21,39 +21,84 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		Data: nil,
 	}
 	order := &model.Order{
-		OrderNum:    "20230001",
-		SellerId:    "seller123",
-		BuyerId:     "buyer456",
-		OrderAmount: 100.0,
+		SellerId:        "seller123",
+		BuyerId:         "buyer456",
+		CommodityAmount: 2,
 	}
 	com1 := &model.Commodity{
-		Model:        gorm.Model{ID: 3},
-		Image:        "ds",
+		Image:        "7d5958fec3dd.jpg",
 		Price:        222,
 		Name:         "2131",
 		OfferingDate: time.Now(),
 		Status:       false,
-		Number:       23,
 	}
-	com2 := &model.Commodity{
-		Model:        gorm.Model{ID: 4},
-		Image:        "ds",
-		Price:        222,
-		Name:         "2131",
-		OfferingDate: time.Now(),
-		Status:       false,
-		Number:       23,
+	order, err := h.OrderSrvI.CreateOrder(order, com1)
+	if err != nil {
+		log.Println(err.Error())
+		entity.SetCodeAndMsg(500, err.Error())
+		c.JSON(200, gin.H{"entity": entity})
+		return
 	}
-	var commodities model.Commodities
-	commodities.Commodities = append(commodities.Commodities, com1)
-	commodities.Commodities = append(commodities.Commodities, com2)
-	reOrder := order.ToRespOrder()
-	reOrder.Commodities = commodities.ToRespCommodities()
-	err := h.OrderSrvI.CreateOrder(order, commodities.Commodities)
+	respOrder := order.ToRespOrder()
+	entity.SetEntityAndHeaderToken(c)
+	entity.SetCodeAndMsg(200, "订单创建成功!请于"+viper.GetString("order.timeout")+"分钟内支付！")
+	entity.Data = respOrder
+	c.JSON(200, gin.H{"entity": entity})
+	return
+}
+
+func (h *OrderHandler) PayOrder(c *gin.Context) {
+	entity := resp.EntityA{
+		Code: 500,
+		Msg:  "生成支付链接失败!",
+		Data: nil,
+	}
+	if c.PostForm("orderNum") == "" {
+		entity.SetCodeAndMsg(500, "参数错误!")
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
+	order := &model.Order{OrderNum: c.PostForm("orderNum")}
+	err := h.OrderSrvI.FindOrder(order)
 	if err != nil {
 		log.Println(err.Error())
 		return
 	}
-	entity.Data = reOrder
+	payUrl, err := h.OrderSrvI.PayOrder(order)
+	if err != nil {
+		return
+	}
+	entity.Data = payUrl.String()
+	entity.SetEntityAndHeaderToken(c)
+	entity.SetCodeAndMsg(200, "生成支付链接成功!")
 	c.JSON(200, gin.H{"entity": entity})
+	return
+}
+
+func (h *OrderHandler) DropOrder(c *gin.Context) {
+	entity := resp.EntityA{
+		Code: 500,
+		Msg:  "订单取消失败",
+		Data: nil,
+	}
+	if c.PostForm("orderNum") == "" {
+		entity.SetCodeAndMsg(500, "参数错误")
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
+	order := &model.Order{
+		OrderNum: c.PostForm("orderNum"),
+	}
+
+	err := h.OrderSrvI.DropOrder(order)
+	if err != nil {
+		log.Println(err.Error())
+		entity.SetCodeAndMsg(500, err.Error())
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
+	entity.SetEntityAndHeaderToken(c)
+	entity.SetCodeAndMsg(200, "订单取消成功")
+	c.JSON(200, gin.H{"entity": entity})
+	return
 }

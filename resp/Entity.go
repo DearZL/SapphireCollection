@@ -1,6 +1,8 @@
 package resp
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+)
 
 type EntityA struct {
 	Code  int         `json:"code"`
@@ -19,9 +21,12 @@ func (e *EntityA) SetCodeAndMsg(code int, s string) {
 	e.Msg = s
 }
 
-func (e *EntityA) SetToken(c *gin.Context) {
-	token, _ := c.Get("token")
-	e.Token = token.(string)
+func (e *EntityA) SetEntityAndHeaderToken(c *gin.Context) {
+	token, exists := c.Get("token")
+	if exists {
+		e.Token = token.(string)
+		c.Header("Authorization", token.(string))
+	}
 }
 
 func (e *EntityB) SetTotal(Total int, TotalPage int) {

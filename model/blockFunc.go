@@ -10,57 +10,56 @@ import (
 	"time"
 )
 
-const targetBits = 24
+const targetBits = 0
 
-func NewBlockchain() *Blockchain {
+func NewBlockchain(chainId string) *Blockchain {
 	return &Blockchain{
 		Blocks: []*Block{
-			NewGenesisBlock(),
+			NewGenesisBlock(chainId),
 		},
 	}
 }
 
-func NewBlock(data string, prevBlockHash []byte) *Block {
+func NewBlock(data string, prevBlockHash string, chainId string) *Block {
 	block := &Block{
 		Timestamp:     time.Now().Unix(),
 		Data:          []byte(data),
 		PrevBlockHash: prevBlockHash,
-		Hash:          []byte{},
+		Hash:          "",
+		ChainId:       chainId,
 	}
 	pow := NewProofOfWork(block)
 	nonce, hash := pow.Run()
-	block.Hash = hash[:]
+	block.Hash = fmt.Sprintf("%x", hash[:])
 	block.Nonce = nonce
 	return block
 }
 
 func (bc *Blockchain) AddBlock(data string) {
 	prevBlock := bc.Blocks[len(bc.Blocks)-1]
-	newBlock := NewBlock(data, prevBlock.Hash)
+	newBlock := NewBlock(data, prevBlock.Hash, bc.Id)
 	bc.Blocks = append(bc.Blocks, newBlock)
 }
 
-func NewGenesisBlock() *Block {
-	return NewBlock("Genesis Block", []byte{})
+func NewGenesisBlock(chainId string) *Block {
+	return NewBlock("Genesis Block", "", chainId)
 }
 
 func (pow *ProofOfWork) Run() (int, []byte) {
 	var hashInt big.Int
 	var hash [32]byte
 	nonce := 0
-	fmt.Printf("Mining the block containing \"%s\"\n", pow.Block.Data)
+	fmt.Println("Mining the block containing")
 	for nonce < math.MaxInt64 {
 		data := pow.prepareData(nonce)
 		hash = sha256.Sum256(data)
 		hashInt.SetBytes(hash[:])
 		if hashInt.Cmp(pow.Target) == -1 {
-			fmt.Printf("\r%x", hash)
 			break
 		} else {
 			nonce++
 		}
 	}
-	fmt.Print("\n\n")
 	return nonce, hash[:]
 }
 
@@ -74,7 +73,7 @@ func NewProofOfWork(b *Block) *ProofOfWork {
 func (pow *ProofOfWork) prepareData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
-			pow.Block.PrevBlockHash,
+			[]byte(pow.Block.PrevBlockHash),
 			pow.Block.Data,
 			[]byte(strconv.FormatInt(pow.Block.Timestamp, 10)),
 			[]byte(strconv.FormatInt(int64(targetBits), 10)),
@@ -95,7 +94,7 @@ func (pow *ProofOfWork) Validate() bool {
 }
 
 func exmple() {
-	bc := NewBlockchain()
+	bc := NewBlockchain("0")
 	bc.AddBlock("Send 1 BTC to Ivan")
 	bc.AddBlock("Send 2 more BTC to Ivan")
 

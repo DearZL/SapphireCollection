@@ -12,9 +12,9 @@ type TokenUtils interface {
 }
 
 type UserClaims struct {
-	UserId    string `json:"userId" gorm:"column:user_id"`
-	UserEmail string `json:"userEmail" gorm:"column:user_email"`
-	Num       string `json:"num"`
+	UserId    string `json:"userId"`
+	UserGroup string `json:"userGroup"`
+	UserEmail string `json:"userEmail"`
 	jwt.RegisteredClaims
 }
 
@@ -46,6 +46,7 @@ func (t *UserClaims) MapClaims(token *jwt.Token) {
 	m := token.Claims.(*UserClaims)
 	*t = UserClaims{
 		UserId:    m.UserId,
+		UserGroup: m.UserGroup,
 		UserEmail: m.UserEmail,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        m.ID,

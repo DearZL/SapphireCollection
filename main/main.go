@@ -1,19 +1,15 @@
 package main
 
 import (
-	"P/model"
-	"P/resp"
 	"P/router"
-	"encoding/gob"
+	"github.com/spf13/viper"
 	"log"
 )
 
 func main() {
-	gob.Register(&model.User{})
-	gob.Register(&resp.User{})
 	r := router.NewRouter()
 	//err = r.RunTLS(":9090", "./cert.pem", "./private.key")
-	err := r.Run(":9090")
+	err := r.Run(viper.GetString("app.host") + ":" + viper.GetString("app.port"))
 	if err != nil {
 		log.Println(err.Error())
 	}

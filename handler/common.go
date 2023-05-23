@@ -4,7 +4,7 @@ import (
 	"P/model"
 	"P/resp"
 	"P/service"
-	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
 )
@@ -19,25 +19,38 @@ func (h *CommonHandler) Upload(c *gin.Context) {
 		Msg:  "上传错误！",
 		Data: nil,
 	}
+	fileType := c.Request.Header.Get("FileType")
+	if fileType != "Icon" && fileType != "Commodity" {
+		c.AbortWithStatus(500)
+		log.Println("已拒绝未携带文件类型请求")
+		return
+	}
 	form, err := c.MultipartForm()
 	if err != nil {
 		log.Println(err.Error())
+		entity.SetCodeAndMsg(500, "参数错误")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
 	files := form.File["files"]
 	if files == nil {
-		err := errors.New("文件集为空")
-		log.Println(err.Error())
+		log.Println("文件集为空")
+		entity.SetCodeAndMsg(500, "参数错误")
 		c.JSON(200, gin.H{"entity": entity})
 		return
+	}
+	location := ""
+	if fileType == "Icon" {
+		location = "./file/icon/"
+	} else {
+		location = "./file/commodity/"
 	}
 	fs := &model.Files{}
 	for _, file := range files {
 		f := model.File{}
-		f.Set(file.Filename, "./file/")
+		f.Set(file.Filename, location, fileType)
 		fs.Files = append(fs.Files, f)
-		err := c.SaveUploadedFile(file, "./file/"+file.Filename)
+		err = c.SaveUploadedFile(file, location+file.Filename)
 		if err != nil {
 			log.Println(err.Error())
 			c.JSON(200, gin.H{"entity": entity})
@@ -50,9 +63,8 @@ func (h *CommonHandler) Upload(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-
+	entity.SetEntityAndHeaderToken(c)
 	entity.SetCodeAndMsg(200, "上传成功！")
-	entity.SetToken(c)
 	c.JSON(200, gin.H{"entity": entity})
 	return
 }
@@ -77,6 +89,7 @@ func (h *CommonHandler) Download(c *gin.Context) {
 	}
 	//inline;attachment
 	way := c.Request.Header.Get("Content-Disposition")
+	fmt.Println(way)
 	c.Header("Content-Disposition", way)
 	c.Header("Content-Type", "image")
 	c.File(file.Location + filename)
