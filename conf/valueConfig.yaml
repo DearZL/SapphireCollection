@@ -1,0 +1,41 @@
+#应用及gin层设置
+app:
+  name: SapphireCollection
+  host: localhost
+  port: 9090
+  mode: debug
+
+#mysql设置
+database:
+  username: root
+  password: 123456
+  host: localhost
+  port: 3306
+
+#redis设置
+redis:
+  host: localhost
+  port: 6379
+  password:
+
+#session存储密钥设置
+storeKey:
+
+#管理员及用户登录过期时间设置
+loginTimeout:
+  admin: 10 #单位：分钟
+  user: 24 #单位：小时
+#订单超时设置
+order:
+  timeout: 20 #单位：分钟
+
+#请求频率限制(同一接口 time 秒内最多可请求 num 次)
+requestLimit:
+  num: 5 #单位：次
+  time: 3 #单位：秒
+
+#支付宝设置
+alipay:
+  appId:
+  privateKey:
+  aliPublicKey:
