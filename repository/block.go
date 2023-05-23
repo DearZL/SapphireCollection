@@ -2,6 +2,7 @@ package repository
 
 import (
 	"P/model"
+	"errors"
 	"gorm.io/gorm"
 )
 
@@ -25,9 +26,12 @@ func (repo *BlockRepository) GetLastBlock(latestBlock *model.Block, tx ...*gorm.
 	if len(tx) != 0 {
 		db = tx[0]
 	}
-	err := db.Order("id desc").First(&latestBlock).Error
-	if err != nil {
-		return err
+	result := db.Order("id desc").First(&latestBlock)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("未找到记录,请先创建创世块")
 	}
 	return nil
 }
@@ -49,14 +53,12 @@ func (repo *BlockRepository) GetBlockChain(chain *model.Blockchain, tx ...*gorm.
 	if len(tx) != 0 {
 		db = tx[0]
 	}
-	//var Blocks []*model.Block
-	//err := db.Where("chain_id=?", chain.Id).Find(Blocks).Error
-	//if err != nil {
-	//	return err
-	//}
-	//chain.Blocks = Blocks
-	//return nil
-
-	db.Create(chain.Blocks)
+	var Blocks []*model.Block
+	err := db.Where("chain_id=?", chain.Id).Find(Blocks).Error
+	if err != nil {
+		return err
+	}
+	chain.Blocks = Blocks
 	return nil
+	//db.Create(chain.Blocks)
 }

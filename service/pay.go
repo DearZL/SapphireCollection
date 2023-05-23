@@ -4,7 +4,6 @@ import (
 	"P/enum"
 	"P/model"
 	"errors"
-	"fmt"
 	"github.com/smartwalle/alipay/v3"
 	"github.com/spf13/viper"
 	"log"
@@ -68,7 +67,7 @@ func (srv *PayService) PayTimeOut(order *model.Order) (*alipay.TradeCloseRsp, er
 		return nil, errors.New("参数错误")
 	}
 	if order.Status == enum.OrderStatusPaid {
-		return nil, errors.New("订单取消失败,订单已支付")
+		return nil, errors.New("支付订单取消失败,订单已支付")
 	}
 	appID := viper.GetString("alipay.appId")
 	privateKey := viper.GetString("alipay.privateKey")
@@ -89,7 +88,6 @@ func (srv *PayService) PayTimeOut(order *model.Order) (*alipay.TradeCloseRsp, er
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(tradeClose.Content)
 	return tradeClose, nil
 }
 

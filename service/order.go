@@ -135,7 +135,8 @@ func (srv *OrderService) DropOrder(order *model.Order) error {
 	//接收查询到的订单信息
 	o := &model.Order{}
 	//锁定及查询订单
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Commodities").
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Preload("Commodities").
 		Where("order_num=?", order.OrderNum).
 		Find(o).Error
 	if err != nil {
@@ -152,7 +153,7 @@ func (srv *OrderService) DropOrder(order *model.Order) error {
 	if o.Status == enum.OrderStatusPaid {
 		tx.Rollback()
 		log.Println("rollBack")
-		return errors.New("订单已付款")
+		return errors.New("订单已付款,如要取消,请申请退款")
 	}
 	if o.Status == enum.OrderStatusCancelled {
 		tx.Rollback()

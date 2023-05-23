@@ -5,7 +5,6 @@ import (
 	"P/resp"
 	"P/service"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"log"
 	"time"
 )
@@ -21,7 +20,6 @@ func (h *CommodityHandler) AddCommodities(c *gin.Context) {
 		Data: nil,
 	}
 	com1 := &model.Commodity{
-		Model:        gorm.Model{ID: 6},
 		Image:        "0f4bd884-dc9c-4cf9-b59e-7d5958fec3dd.jpg",
 		Price:        222,
 		Hash:         "231412412",
@@ -31,7 +29,6 @@ func (h *CommodityHandler) AddCommodities(c *gin.Context) {
 		Number:       23,
 	}
 	com2 := &model.Commodity{
-		Model:        gorm.Model{ID: 7},
 		Image:        "QQ图片20230210175331.jpg",
 		Price:        241241222,
 		Name:         "qweqwr",

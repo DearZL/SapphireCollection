@@ -43,5 +43,6 @@ func (h *PayHandler) PayStatus(c *gin.Context) {
 	entity.SetEntityAndHeaderToken(c)
 	entity.SetCodeAndMsg(200, "查询订单成功")
 	entity.Data = result.Content
+	c.JSON(200, gin.H{"entity": entity})
 	return
 }

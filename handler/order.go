@@ -62,6 +62,8 @@ func (h *OrderHandler) PayOrder(c *gin.Context) {
 	err := h.OrderSrvI.FindOrder(order)
 	if err != nil {
 		log.Println(err.Error())
+		entity.SetCodeAndMsg(500, "未找到订单信息!")
+		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
 	payUrl, err := h.OrderSrvI.PayOrder(order)
