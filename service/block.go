@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"os"
+	"time"
 )
 
 type BlockServiceInterface interface {
@@ -40,7 +41,9 @@ func (srv *BlockService) AddBlock(cs *model.Commodities, chainId string, tx0 ...
 			return err
 		}
 		chain.AddBlock(string(imageData))
+		time.Sleep(1000 * time.Microsecond)
 		com.Hash = chain.Blocks[len(chain.Blocks)-1].Hash
+
 	}
 	var tx *gorm.DB
 	if len(tx0) != 0 {

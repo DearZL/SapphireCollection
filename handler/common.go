@@ -4,7 +4,6 @@ import (
 	"P/model"
 	"P/resp"
 	"P/service"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
 )
@@ -89,7 +88,6 @@ func (h *CommonHandler) Download(c *gin.Context) {
 	}
 	//inline;attachment
 	way := c.Request.Header.Get("Content-Disposition")
-	fmt.Println(way)
 	c.Header("Content-Disposition", way)
 	c.Header("Content-Type", "image")
 	c.File(file.Location + filename)

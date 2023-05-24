@@ -2,6 +2,7 @@ package repository
 
 import (
 	"P/model"
+	"errors"
 	"gorm.io/gorm"
 	"log"
 )
@@ -24,10 +25,12 @@ func (repo *CommonRepository) AddFile(files []model.File) error {
 }
 func (repo *CommonRepository) FindFile(filename string) (*model.File, error) {
 	f := &model.File{}
-	err := repo.DB.Where("filename=?", filename).Find(&f).Error
-	if err != nil {
-		log.Println(err.Error())
-		return nil, err
+	result := repo.DB.Where("filename=?", filename).Find(&f)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, errors.New("未找到记录")
 	}
 	return f, nil
 }

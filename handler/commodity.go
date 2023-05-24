@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"P/enum"
 	"P/model"
 	"P/resp"
 	"P/service"
@@ -19,27 +20,26 @@ func (h *CommodityHandler) AddCommodities(c *gin.Context) {
 		Msg:  "参数错误!",
 		Data: nil,
 	}
-	com1 := &model.Commodity{
-		Image:        "0f4bd884-dc9c-4cf9-b59e-7d5958fec3dd.jpg",
-		Price:        222,
-		Hash:         "231412412",
-		Name:         "2131",
-		OfferingDate: time.Now(),
-		Status:       false,
-		Number:       23,
+	com1 := &model.Commodity{}
+	if err := c.ShouldBindJSON(com1); err != nil {
+		log.Println(err)
+		c.JSON(200, gin.H{"entity": entity})
+		return
 	}
-	com2 := &model.Commodity{
-		Image:        "QQ图片20230210175331.jpg",
-		Price:        241241222,
-		Name:         "qweqwr",
-		Hash:         "23124124",
-		OfferingDate: time.Now(),
-		Status:       false,
-		Number:       23,
-	}
+	com1.OfferingDate = time.Now()
+	com1.Status = enum.CommodityDisabled
 	cs := &model.Commodities{}
-	cs.Commodities = append(cs.Commodities, com1)
-	cs.Commodities = append(cs.Commodities, com2)
+	for i := 1; i <= com1.Number; i++ {
+		com := &model.Commodity{
+			Number:       i,
+			Name:         com1.Name,
+			Image:        com1.Image,
+			Price:        com1.Price,
+			Status:       com1.Status,
+			OfferingDate: com1.OfferingDate,
+		}
+		cs.Commodities = append(cs.Commodities, com)
+	}
 	err := h.CommoditySrvI.AddCommodities(cs)
 	if err != nil {
 		for _, c := range cs.Commodities {
@@ -52,6 +52,28 @@ func (h *CommodityHandler) AddCommodities(c *gin.Context) {
 	}
 	entity.SetEntityAndHeaderToken(c)
 	entity.SetCodeAndMsg(200, "添加商品成功!")
+	c.JSON(200, gin.H{"entity": entity})
+	return
+}
+
+func (h *CommodityHandler) EditComSStatus(c *gin.Context) {
+	entity := resp.EntityA{
+		Code: 500,
+		Msg:  "参数错误!",
+		Data: nil,
+	}
+	if c.PostForm("status") == "" || c.PostForm("name") == "" {
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
+	err := h.CommoditySrvI.EditComSStatusByName(c.PostForm("name"), c.PostForm("status") == "true")
+	if err != nil {
+		entity.SetCodeAndMsg(500, err.Error())
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
+	entity.SetCodeAndMsg(200, "更改成功")
+	entity.SetEntityAndHeaderToken(c)
 	c.JSON(200, gin.H{"entity": entity})
 	return
 }

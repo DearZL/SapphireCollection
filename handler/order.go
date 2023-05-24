@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"log"
-	"time"
 )
 
 type OrderHandler struct {
@@ -20,17 +19,15 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		Msg:  "订单创建失败",
 		Data: nil,
 	}
-	order := &model.Order{
-		SellerId:        "seller123",
-		BuyerId:         "buyer456",
-		CommodityAmount: 2,
-	}
 	com1 := &model.Commodity{
-		Image:        "7d5958fec3dd.jpg",
-		Price:        222,
-		Name:         "2131",
-		OfferingDate: time.Now(),
-		Status:       false,
+		Name: "2132",
+	}
+	order := &model.Order{
+		SellerId: "seller123",
+		BuyerId:  "buyer456",
+		//商品总数量
+		CommodityAmount: 2,
+		Commodities:     []*model.Commodity{com1},
 	}
 	order, err := h.OrderSrvI.CreateOrder(order, com1)
 	if err != nil {
@@ -68,6 +65,8 @@ func (h *OrderHandler) PayOrder(c *gin.Context) {
 	}
 	payUrl, err := h.OrderSrvI.PayOrder(order)
 	if err != nil {
+		entity.SetCodeAndMsg(500, err.Error())
+		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
 	entity.Data = payUrl.String()

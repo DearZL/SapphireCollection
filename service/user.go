@@ -1,6 +1,7 @@
 package service
 
 import (
+	"P/enum"
 	"P/model"
 	"P/repository"
 	"P/utils"
@@ -27,8 +28,7 @@ type UserSrvInterface interface {
 }
 
 type UserService struct {
-	Redis *redis.Client
-	//userDao
+	Redis         *redis.Client
 	UserRepo      repository.UserRepoInterface
 	CommodityRepo repository.CommodityRepoInterface
 }
@@ -49,6 +49,7 @@ func (srv *UserService) AddUser(user *model.User) (*model.User, error) {
 	}
 	user.UserId = uuid.NewV4().String()
 	user.Password = fmt.Sprintf("%x", md5.Sum([]byte(user.Password)))
+	user.Status = enum.UserActive
 	user, err := srv.UserRepo.Add(user)
 	if err != nil {
 		log.Println(err.Error())
@@ -78,7 +79,7 @@ func (srv *UserService) UserLogin(user *model.User) (*model.User, string, error)
 	if r == nil {
 		return nil, "", errors.New("该用户不存在，请检查邮箱或注册！")
 	}
-	if r.Status != false {
+	if r.Status == enum.UserDisabled {
 		return nil, "", errors.New("该用户已被禁用")
 	}
 	u, err := srv.UserRepo.FindByEmail(userTmp)
@@ -153,10 +154,10 @@ func (srv *UserService) EditUserStatus(userId string, status string) error {
 	if result.Group == "Admin" {
 		return errors.New("无法对管理员操作")
 	}
-	if status == "1" {
-		result.Status = true
+	if status == "userDisabled" {
+		result.Status = enum.UserDisabled
 	} else {
-		result.Status = false
+		result.Status = enum.UserActive
 	}
 	if err := srv.UserRepo.EditUserStatusById(result); err != nil {
 		return err

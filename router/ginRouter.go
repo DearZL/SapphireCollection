@@ -18,6 +18,10 @@ func NewRouter() *gin.Engine {
 	pay := r.Group("/api/pay")
 	{
 		pay.POST("/payStatus", global.PayHandler.PayStatus)
+		pay.GET("/success", func(c *gin.Context) {
+			fmt.Println("success")
+			return
+		})
 	}
 
 	common := r.Group("/api/common")
@@ -49,12 +53,13 @@ func NewRouter() *gin.Engine {
 	}
 	block := r.Group("/api/block")
 	{
-		block.POST("/addBlock", midware.CheckToken(), global.BlockHandler.BlocksInfo)
+		block.POST("/findChain", global.BlockHandler.BlocksInfo)
 	}
 
 	commodity := r.Group("/api/commodity")
 	{
 		commodity.POST("/addCommodity", global.CommodityHandler.AddCommodities)
+		commodity.POST("/editComSStatus", global.CommodityHandler.EditComSStatus)
 	}
 
 	order := r.Group("/api/order")

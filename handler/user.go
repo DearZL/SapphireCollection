@@ -430,7 +430,6 @@ func (h *UserHandler) EditUserPw(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-
 	updateUser := &model.User{
 		UserId:   result.UserId,
 		Password: c.PostForm("password"),

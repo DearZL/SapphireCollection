@@ -4,6 +4,7 @@ import (
 	"P/model"
 	"errors"
 	"gorm.io/gorm"
+	"log"
 )
 
 type BlockRepoInterface interface {
@@ -28,7 +29,8 @@ func (repo *BlockRepository) GetLastBlock(latestBlock *model.Block, tx ...*gorm.
 	}
 	result := db.Order("id desc").First(&latestBlock)
 	if result.Error != nil {
-		return result.Error
+		log.Println(result.Error)
+		return errors.New("查询失败")
 	}
 	if result.RowsAffected == 0 {
 		return errors.New("未找到记录,请先创建创世块")
@@ -53,12 +55,15 @@ func (repo *BlockRepository) GetBlockChain(chain *model.Blockchain, tx ...*gorm.
 	if len(tx) != 0 {
 		db = tx[0]
 	}
-	var Blocks []*model.Block
-	err := db.Where("chain_id=?", chain.Id).Find(Blocks).Error
-	if err != nil {
-		return err
+	var blocks []*model.Block
+	result := db.Where("chain_id=?", chain.Id).Find(&blocks)
+	if result.Error != nil {
+		log.Println(result.Error)
+		return errors.New("查询失败")
 	}
-	chain.Blocks = Blocks
+	if result.RowsAffected == 0 {
+		return errors.New("未找到记录,请检查参数")
+	}
+	chain.Blocks = blocks
 	return nil
-	//db.Create(chain.Blocks)
 }

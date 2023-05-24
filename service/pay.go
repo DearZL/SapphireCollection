@@ -16,7 +16,7 @@ type PayService struct{}
 
 type PayServiceInterface interface {
 	Pay(order *model.Order) (*url.URL, error)
-	PayTimeOut(order *model.Order) (*alipay.TradeCloseRsp, error)
+	ClosePay(order *model.Order) (*alipay.TradeCloseRsp, error)
 	FindPayStatus(order *model.Order) (*alipay.TradeQueryRsp, error)
 }
 
@@ -39,30 +39,30 @@ func (srv *PayService) Pay(order *model.Order) (*url.URL, error) {
 	client, err := alipay.New(appID, privateKey, false)
 	if err != nil {
 		log.Println(err.Error())
-		return nil, err
+		return nil, errors.New("生成支付链接失败")
 	}
 	err = client.LoadAliPayPublicKey(aliPublicKey)
 	if err != nil {
 		log.Println(err.Error())
-		return nil, err
+		return nil, errors.New("生成支付链接失败")
 	}
-	var p = alipay.TradePagePay{}    // page支付方式使用
-	p.NotifyURL = "/api/pay/success" // 支付结果回调的url，注意内网穿透问题
-	p.ReturnURL = "www.baidu.com"    // 支付成功后倒计时结束跳转的页面
-	p.Subject = "标题"
+	var p = alipay.TradePagePay{}                         // page支付方式使用
+	p.NotifyURL = "/api/pay/success"                      // 支付结果回调的url，注意内网穿透问题
+	p.ReturnURL = "http://localhost:9090/api/pay/success" // 支付成功后倒计时结束跳转的页面
+	p.Subject = order.BuyerId + " 的订单"
 	p.OutTradeNo = order.OrderNum //传递一个唯一单号
-	p.TotalAmount = strconv.Itoa(order.CommodityAmount)
+	p.TotalAmount = strconv.FormatFloat(float64(order.OrderAmount), 'f', 2, 64)
 	p.ProductCode = "FAST_INSTANT_TRADE_PAY" // page支付必须使用这个配置
-	p.TimeExpire = order.CreatedAt.Add(20 * time.Minute).Format("2006-01-02 15:04:05")
+	p.TimeExpire = order.CreatedAt.Add(time.Duration(viper.GetInt64("order.timeout")) * time.Minute).Format("2006-01-02 15:04:05")
 	payUrl, err := client.TradePagePay(p)
 	if err != nil {
 		log.Println(err)
-		return nil, err
+		return nil, errors.New("生成支付链接失败")
 	}
 	return payUrl, nil
 }
 
-func (srv *PayService) PayTimeOut(order *model.Order) (*alipay.TradeCloseRsp, error) {
+func (srv *PayService) ClosePay(order *model.Order) (*alipay.TradeCloseRsp, error) {
 	if order.OrderNum == "" {
 		return nil, errors.New("参数错误")
 	}

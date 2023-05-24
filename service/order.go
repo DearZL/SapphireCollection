@@ -5,7 +5,6 @@ import (
 	"P/model"
 	"P/repository"
 	"errors"
-	"fmt"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/viper"
 	"gorm.io/gorm/clause"
@@ -32,9 +31,9 @@ type OrderServiceInterface interface {
 // StartOrderTimer 超时取消订单
 func (srv *OrderService) StartOrderTimer(order *model.Order) error {
 	timeout := time.Duration(viper.GetInt64("order.timeout"))
-	timer := time.NewTimer(timeout*time.Minute - time.Since(order.CreatedAt) + 4*time.Second)
+	timer := time.NewTimer(timeout*time.Minute - time.Since(order.CreatedAt))
 	<-timer.C
-	err := srv.FindOrderWithCom(order)
+	err := srv.OrderRepo.FindOrderByOrderNum(order)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -45,7 +44,7 @@ func (srv *OrderService) StartOrderTimer(order *model.Order) error {
 		return err
 	}
 	//只有当订单状态为未付款且支付宝查询状态为空(没有点击支付)或订单超时关闭时调用DropOrder
-	if order.Status == enum.OrderStatusUnpaid && (status.Content.TradeStatus == "TRADE_CLOSED" || status.Content.TradeStatus == "") {
+	if order.Status == enum.OrderStatusUnpaid && (status.Content.TradeStatus != "TRADE_FINISHED" && status.Content.TradeStatus != "TRADE_SUCCESS") {
 		err = srv.DropOrder(order)
 		if err != nil {
 			log.Println(err)
@@ -57,13 +56,15 @@ func (srv *OrderService) StartOrderTimer(order *model.Order) error {
 }
 
 func (srv *OrderService) CreateOrder(order *model.Order, com *model.Commodity) (*model.Order, error) {
-	fmt.Println(srv.PaySrv)
 	//接收被锁定的商品
 	var csEnd []*model.Commodity
 	//获取数据库连接指针并开启事务
 	tx := srv.OrderRepo.GetDB().Begin()
 	//锁定及查询商品
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("name = ? AND order_num = ?", com.Name, "").Order("RAND()").Limit(order.CommodityAmount).Find(&csEnd).Error
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("name = ? AND order_num = ? And status = ?", com.Name, "", enum.CommodityActive).
+		Order("RAND()").Limit(order.CommodityAmount).
+		Find(&csEnd).Error
 	//锁定错误返回
 	if err != nil {
 		tx.Rollback()
@@ -102,10 +103,7 @@ func (srv *OrderService) CreateOrder(order *model.Order, com *model.Commodity) (
 	log.Println("commit")
 	//启动定时器
 	go func() {
-		err := srv.StartOrderTimer(order)
-		if err != nil {
-
-		}
+		_ = srv.StartOrderTimer(order)
 	}()
 	return order, nil
 }
@@ -160,14 +158,13 @@ func (srv *OrderService) DropOrder(order *model.Order) error {
 		log.Println("rollBack")
 		return errors.New("订单处于未活跃状态")
 	}
-	refund, err := srv.PaySrv.PayTimeOut(o)
+	tradeClose, err := srv.PaySrv.ClosePay(o)
+	log.Println(tradeClose.Content)
 	if err != nil {
 		tx.Rollback()
 		log.Println("rollBack")
-		log.Println(refund.Content)
 		return errors.New("支付订单取消失败")
 	}
-	log.Println(refund.Content)
 	//将订单状态设为0(已取消)
 	err = srv.OrderRepo.UpdateOrderStatus(o, enum.OrderStatusCancelled, tx)
 	if err != nil {
@@ -176,7 +173,7 @@ func (srv *OrderService) DropOrder(order *model.Order) error {
 		return errors.New("取消订单失败!请重试")
 	}
 	//传入商品,空字符串事务指针将商品order_id和user_id字段更新为空(释放商品)
-	err = srv.CommodityRepo.UpdateCommodities(o.Commodities, &model.Order{}, tx)
+	err = srv.CommodityRepo.UpdateCommoditiesOrderNumUserId(o.Commodities, &model.Order{}, tx)
 	if err != nil {
 		tx.Rollback()
 		log.Println("rollBack")
