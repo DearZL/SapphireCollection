@@ -18,12 +18,12 @@ func (h *BlockHandler) BlocksInfo(c *gin.Context) {
 		Token: "",
 		Data:  nil,
 	}
-	if c.PostForm("chainId") == "" {
+	if c.Param("chainId") == "" {
 		entity.SetCodeAndMsg(500, "参数错误")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	chain := &model.Blockchain{Id: c.PostForm("chainId")}
+	chain := &model.Blockchain{Id: c.Param("chainId")}
 	err := h.BlockSrvI.GetBlockChain(chain)
 	if err != nil {
 		entity.SetCodeAndMsg(500, err.Error())

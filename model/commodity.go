@@ -14,6 +14,7 @@ type Commodity struct {
 	Name         string    `json:"name" gorm:"index"`
 	Status       bool      `json:"status"`
 	Number       int       `json:"number"`
+	Amount       int       `json:"amount" gorm:"-"`
 	OfferingDate time.Time `json:"offeringDate"`
 	OrderNum     string    `json:"orderNum"`
 	UserId       string    `json:"userId"`
@@ -28,6 +29,7 @@ func (c *Commodity) ToRespCommodity() *resp.Commodity {
 		Image:    c.Image,
 		Name:     c.Name,
 		Price:    c.Price,
+		Amount:   c.Amount,
 		OrderNum: c.OrderNum,
 	}
 	return re

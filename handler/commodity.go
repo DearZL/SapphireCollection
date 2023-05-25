@@ -28,6 +28,7 @@ func (h *CommodityHandler) AddCommodities(c *gin.Context) {
 	}
 	com1.OfferingDate = time.Now()
 	com1.Status = enum.CommodityDisabled
+	com1.UserId = "Admin"
 	cs := &model.Commodities{}
 	for i := 1; i <= com1.Number; i++ {
 		com := &model.Commodity{
@@ -35,6 +36,7 @@ func (h *CommodityHandler) AddCommodities(c *gin.Context) {
 			Name:         com1.Name,
 			Image:        com1.Image,
 			Price:        com1.Price,
+			UserId:       com1.UserId,
 			Status:       com1.Status,
 			OfferingDate: com1.OfferingDate,
 		}

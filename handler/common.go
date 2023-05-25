@@ -39,7 +39,7 @@ func (h *CommonHandler) Upload(c *gin.Context) {
 		return
 	}
 	location := ""
-	if fileType == "Icon" {
+	if fileType == "icon" {
 		location = "./file/icon/"
 	} else {
 		location = "./file/commodity/"
@@ -86,7 +86,7 @@ func (h *CommonHandler) Download(c *gin.Context) {
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
-	//inline;attachment
+	//way:inline||attachment
 	way := c.Request.Header.Get("Content-Disposition")
 	c.Header("Content-Disposition", way)
 	c.Header("Content-Type", "image")

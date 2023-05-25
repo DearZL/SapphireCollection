@@ -53,7 +53,7 @@ func NewRouter() *gin.Engine {
 	}
 	block := r.Group("/api/block")
 	{
-		block.POST("/findChain", global.BlockHandler.BlocksInfo)
+		block.GET("/findChain/:chainId", global.BlockHandler.BlocksInfo)
 	}
 
 	commodity := r.Group("/api/commodity")

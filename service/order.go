@@ -21,7 +21,7 @@ type OrderService struct {
 
 type OrderServiceInterface interface {
 	StartOrderTimer(order *model.Order) error
-	CreateOrder(order *model.Order, com *model.Commodity) (*model.Order, error)
+	CreateOrder(order *model.Order) error
 	PayOrder(order *model.Order) (*url.URL, error)
 	FindOrder(order *model.Order) error
 	FindOrderWithCom(order *model.Order) error
@@ -55,57 +55,65 @@ func (srv *OrderService) StartOrderTimer(order *model.Order) error {
 	return nil
 }
 
-func (srv *OrderService) CreateOrder(order *model.Order, com *model.Commodity) (*model.Order, error) {
+func (srv *OrderService) CreateOrder(order *model.Order) error {
 	//接收被锁定的商品
 	var csEnd []*model.Commodity
+	var csTmp []*model.Commodity
 	//获取数据库连接指针并开启事务
 	tx := srv.OrderRepo.GetDB().Begin()
 	//锁定及查询商品
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("name = ? AND order_num = ? And status = ?", com.Name, "", enum.CommodityActive).
-		Order("RAND()").Limit(order.CommodityAmount).
-		Find(&csEnd).Error
-	//锁定错误返回
-	if err != nil {
-		tx.Rollback()
-		return nil, errors.New("商品锁定失败")
+	for i := 0; i < len(order.Commodities); i++ {
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("name = ? AND order_num = ? And status = ?", order.Commodities[i].Name, "", enum.CommodityActive).
+			Order("RAND()").Limit(order.Commodities[i].Amount).
+			Find(&csTmp).Error
+		//锁定错误返回
+		if err != nil {
+			tx.Rollback()
+			log.Println("rollBack")
+			return errors.New("商品锁定失败")
+		}
+		csEnd = append(csEnd, csTmp...)
 	}
-	//如果被锁定的数量与请求商品数量不符返回错误
+	//如果被锁定的数量与订单商品数量不符返回错误
 	if len(csEnd) != order.CommodityAmount {
 		tx.Rollback()
-		return nil, errors.New("商品锁定失败!您选择的一件或多件商品已无货,请重新下单")
+		log.Println("rollBack")
+		return errors.New("商品锁定失败!您选择的一件或多件商品已无货,请重新下单")
 	}
+	//补充订单信息
 	order.OrderNum = uuid.NewV4().String()
 	//将订单状态设为1(已下单)
 	order.Status = enum.OrderStatusUnpaid
 	//计算总金额,并修改商品所属订单号
 	order.OrderAmount = 0
 	for _, c := range csEnd {
+		//计算订单总金额
 		order.OrderAmount = order.OrderAmount + c.Price
 		c.OrderNum = order.OrderNum
 	}
 	order.Commodities = csEnd
 	//传入事务指针执行添加订单操作
-	err = srv.OrderRepo.AddOrder(order, tx)
+	err := srv.OrderRepo.AddOrder(order, tx)
 	//错误返回
 	if err != nil {
 		tx.Rollback()
 		log.Println("rollBack")
-		return nil, errors.New("创建订单失败,请重试")
+		return errors.New("创建订单失败,请重试")
 	}
 	//提交事务
 	err = tx.Commit().Error
 	//错误返回
 	if err != nil {
 		tx.Rollback()
-		return nil, errors.New("创建订单失败,请重试")
+		return errors.New("创建订单失败,请重试")
 	}
 	log.Println("commit")
 	//启动定时器
 	go func() {
 		_ = srv.StartOrderTimer(order)
 	}()
-	return order, nil
+	return nil
 }
 
 func (srv *OrderService) PayOrder(order *model.Order) (*url.URL, error) {

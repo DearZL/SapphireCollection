@@ -252,7 +252,7 @@ func (h *UserHandler) Logout(c *gin.Context) {
 func (h *UserHandler) EditUserInfo(c *gin.Context) {
 	entity := resp.EntityA{
 		Code: 500,
-		Msg:  "参数错误或Cookie状态异常！",
+		Msg:  "参数错误或Cookie状态异常,请重新登录后重试!",
 		Data: nil,
 	}
 	user := &model.User{}
@@ -292,14 +292,14 @@ func (h *UserHandler) EditUserInfo(c *gin.Context) {
 func (h *UserHandler) EmailVerify(c *gin.Context) {
 	entity := resp.EntityA{
 		Code: 500,
-		Msg:  "参数错误或Cookie状态异常！",
+		Msg:  "参数错误或Cookie状态异常,请重新登录后重试!",
 		Data: nil,
 	}
 	email := c.PostForm("email")
 	code := c.PostForm("code")
 	session := sessions.Default(c)
 	if email == "" || code == "" || session.Get("email") == nil || session.Get("code") == nil {
-		log.Println("参数错误或Cookie状态异常！")
+		log.Println("参数错误或Cookie状态异常,请重新登录后重试!")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
@@ -326,7 +326,7 @@ func (h *UserHandler) EmailVerify(c *gin.Context) {
 func (h *UserHandler) EditUserEmail(c *gin.Context) {
 	entity := resp.EntityA{
 		Code: 500,
-		Msg:  "参数错误或Cookie状态异常！",
+		Msg:  "参数错误或Cookie状态异常,请重新登录后重试!",
 		Data: nil,
 	}
 	// 创建session
@@ -337,7 +337,7 @@ func (h *UserHandler) EditUserEmail(c *gin.Context) {
 	newEmail := c.PostForm("newEmail")
 	// 若前端没有传回code则返回
 	if c.PostForm("code") == "" || c.PostForm("newEmail") == "" || code == nil || oldEmail == nil {
-		log.Println("参数错误或Cookie状态异常！")
+		log.Println("参数错误或Cookie状态异常,请重新登录后重试!")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}
@@ -386,7 +386,7 @@ func (h *UserHandler) EditUserEmail(c *gin.Context) {
 func (h *UserHandler) EditUserPw(c *gin.Context) {
 	entity := resp.EntityA{
 		Code: 500,
-		Msg:  "参数错误或Cookie状态异常！",
+		Msg:  "参数错误或Cookie状态异常,请重新登录后重试!",
 		Data: nil,
 	}
 	// 创建session
@@ -397,7 +397,7 @@ func (h *UserHandler) EditUserPw(c *gin.Context) {
 	// 若前端没有传回code则返回
 	if c.PostForm("email") == "" || c.PostForm("code") == "" ||
 		c.PostForm("password") == "" || code == nil || email == nil {
-		log.Println("参数错误或Cookie状态异常！")
+		log.Println("参数错误或Cookie状态异常,请重新登录后重试!")
 		c.JSON(200, gin.H{"entity": entity})
 		return
 	}

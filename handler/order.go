@@ -20,16 +20,27 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		Data: nil,
 	}
 	com1 := &model.Commodity{
-		Name: "2132",
+		Name:   "2132",
+		Amount: 2,
+	}
+	com2 := &model.Commodity{
+		Name:   "2131",
+		Amount: 2,
 	}
 	order := &model.Order{
-		SellerId: "seller123",
-		BuyerId:  "buyer456",
-		//商品总数量
-		CommodityAmount: 2,
-		Commodities:     []*model.Commodity{com1},
+		Commodities: []*model.Commodity{com1, com2},
 	}
-	order, err := h.OrderSrvI.CreateOrder(order, com1)
+	order.CommodityAmount = 0
+	//商品总数量
+	for _, c := range order.Commodities {
+		order.CommodityAmount = order.CommodityAmount + c.Amount
+	}
+	if order.CommodityAmount <= 0 {
+		entity.SetCodeAndMsg(500, "非法参数")
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
+	err := h.OrderSrvI.CreateOrder(order)
 	if err != nil {
 		log.Println(err.Error())
 		entity.SetCodeAndMsg(500, err.Error())
@@ -43,6 +54,15 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	c.JSON(200, gin.H{"entity": entity})
 	return
 }
+
+//func (h *OrderHandler) CreateWalletOrder(c *gin.Context) {
+//	entity := resp.EntityA{
+//		Code: 500,
+//		Msg:  "订单创建失败",
+//		Data: nil,
+//	}
+//
+//}
 
 func (h *OrderHandler) PayOrder(c *gin.Context) {
 	entity := resp.EntityA{

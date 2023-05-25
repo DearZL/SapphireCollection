@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
+	"log"
 )
 
 var (
@@ -50,6 +51,7 @@ func initDataBase() {
 		&model.User{},
 		&model.Order{},
 		&model.Block{},
+		&model.Wallet{},
 		&model.Commodity{},
 	)
 	if err != nil {
@@ -72,6 +74,7 @@ func initRedis() {
 	})
 	_, err := Redis.Ping().Result()
 	if err != nil {
+		log.Println("Redis连接出错")
 		panic(err.Error())
 		return
 	}
