@@ -46,3 +46,24 @@ func (h *PayHandler) PayStatus(c *gin.Context) {
 	c.JSON(200, gin.H{"entity": entity})
 	return
 }
+
+func (h *PayHandler) JumpQueryPayStatus(c *gin.Context) {
+	entity := resp.EntityA{
+		Code: 500,
+		Msg:  "查询支付状态失败,请检查订单",
+		Data: nil,
+	}
+	if c.Query("trade_no") == "" || c.Query("out_trade_no") == "" {
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
+	status, err := h.PaySrvI.FindPayStatus(&model.Order{OrderNum: c.Query("out_trade_no")})
+	if err != nil {
+		c.JSON(200, gin.H{"entity": entity})
+		return
+	}
+	entity.SetCodeAndMsg(200, "查询成功")
+	entity.Data = status.Content
+	c.JSON(200, gin.H{"entity": entity})
+	return
+}

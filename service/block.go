@@ -11,12 +11,17 @@ import (
 )
 
 type BlockServiceInterface interface {
+	GetDB() *gorm.DB
 	GetBlockChain(chain *model.Blockchain) error
 	AddBlock(cs *model.Commodities, chainId string, tx1 ...*gorm.DB) error
 }
 
 type BlockService struct {
 	BlockRepo repository.BlockRepoInterface
+}
+
+func (srv *BlockService) GetDB() *gorm.DB {
+	return srv.BlockRepo.GetDB()
 }
 
 func (srv *BlockService) GetBlockChain(chain *model.Blockchain) error {

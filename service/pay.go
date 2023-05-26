@@ -66,9 +66,6 @@ func (srv *PayService) ClosePay(order *model.Order) (*alipay.TradeCloseRsp, erro
 	if order.OrderNum == "" {
 		return nil, errors.New("参数错误")
 	}
-	if order.Status == enum.OrderStatusPaid {
-		return nil, errors.New("支付订单取消失败,订单已支付")
-	}
 	appID := viper.GetString("alipay.appId")
 	privateKey := viper.GetString("alipay.privateKey")
 	aliPublicKey := viper.GetString("alipay.aliPublicKey")

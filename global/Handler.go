@@ -126,7 +126,7 @@ func initHandler() {
 			CommodityRepo: &repository.CommodityRepository{
 				DB: DB,
 			},
-			PaySrv: &service.PayService{},
+			PaySrvI: &service.PayService{},
 		},
 	}
 
@@ -135,7 +135,7 @@ func initHandler() {
 			CommodityRepo: &repository.CommodityRepository{
 				DB: DB,
 			},
-			BlockSrv: &service.BlockService{
+			BlockSrvI: &service.BlockService{
 				BlockRepo: &repository.BlockRepository{
 					DB: DB,
 				},

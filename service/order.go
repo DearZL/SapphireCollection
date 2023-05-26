@@ -7,6 +7,7 @@ import (
 	"errors"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"log"
 	"net/url"
@@ -16,7 +17,7 @@ import (
 type OrderService struct {
 	OrderRepo     repository.OrderRepoInterface
 	CommodityRepo repository.CommodityRepoInterface
-	PaySrv        *PayService
+	PaySrvI       PayServiceInterface
 }
 
 type OrderServiceInterface interface {
@@ -38,7 +39,7 @@ func (srv *OrderService) StartOrderTimer(order *model.Order) error {
 		log.Println(err)
 		return err
 	}
-	status, err := srv.PaySrv.FindPayStatus(order)
+	status, err := srv.PaySrvI.FindPayStatus(order)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -56,42 +57,66 @@ func (srv *OrderService) StartOrderTimer(order *model.Order) error {
 }
 
 func (srv *OrderService) CreateOrder(order *model.Order) error {
+	//钱包类型订单处理方式
+	if order.OrderType == enum.OrderTypeWallet {
+		//补充订单信息
+		order.OrderNum = uuid.NewV4().String()
+		//将订单状态设为1(已下单)
+		order.Status = enum.OrderStatusUnpaid
+		err := srv.OrderRepo.AddOrder(order)
+		//错误返回
+		if err != nil {
+			log.Println(err)
+			return errors.New("创建订单失败,请重试")
+		}
+		//启动定时器
+		go func() {
+			_ = srv.StartOrderTimer(order)
+		}()
+		return nil
+	}
+	//商品类型订单处理方式
 	//接收被锁定的商品
 	var csEnd []*model.Commodity
 	var csTmp []*model.Commodity
 	//获取数据库连接指针并开启事务
 	tx := srv.OrderRepo.GetDB().Begin()
 	//锁定及查询商品
-	for i := 0; i < len(order.Commodities); i++ {
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("name = ? AND order_num = ? And status = ?", order.Commodities[i].Name, "", enum.CommodityActive).
-			Order("RAND()").Limit(order.Commodities[i].Amount).
-			Find(&csTmp).Error
+	for _, c := range order.Commodities {
+		result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("name = ? AND order_num = ? And status = ?", c.Name, "", enum.CommodityActive).
+			Order("RAND()").Limit(c.Amount).
+			Find(&csTmp)
 		//锁定错误返回
-		if err != nil {
+		if result.Error != nil {
 			tx.Rollback()
 			log.Println("rollBack")
 			return errors.New("商品锁定失败")
 		}
+		//如果被锁定的数量与订单商品数量不符返回错误
+		if result.RowsAffected != int64(c.Amount) {
+			tx.Rollback()
+			log.Println("rollBack")
+			return errors.New("商品锁定失败!您选择的一件或多件商品已无货,请重新下单")
+		}
 		csEnd = append(csEnd, csTmp...)
-	}
-	//如果被锁定的数量与订单商品数量不符返回错误
-	if len(csEnd) != order.CommodityAmount {
-		tx.Rollback()
-		log.Println("rollBack")
-		return errors.New("商品锁定失败!您选择的一件或多件商品已无货,请重新下单")
 	}
 	//补充订单信息
 	order.OrderNum = uuid.NewV4().String()
 	//将订单状态设为1(已下单)
 	order.Status = enum.OrderStatusUnpaid
+	order.SellerId = csEnd[0].UserId
 	//计算总金额,并修改商品所属订单号
 	order.OrderAmount = 0
+
 	for _, c := range csEnd {
 		//计算订单总金额
 		order.OrderAmount = order.OrderAmount + c.Price
 		c.OrderNum = order.OrderNum
+		//商品个数
+		c.Amount = 1
 	}
+	//将锁定的商品切片赋给订单中商品字段
 	order.Commodities = csEnd
 	//传入事务指针执行添加订单操作
 	err := srv.OrderRepo.AddOrder(order, tx)
@@ -117,7 +142,7 @@ func (srv *OrderService) CreateOrder(order *model.Order) error {
 }
 
 func (srv *OrderService) PayOrder(order *model.Order) (*url.URL, error) {
-	payUrl, err := srv.PaySrv.Pay(order)
+	payUrl, err := srv.PaySrvI.Pay(order)
 	if err != nil {
 		return nil, err
 	}
@@ -140,18 +165,27 @@ func (srv *OrderService) DropOrder(order *model.Order) error {
 	tx = tx.Begin()
 	//接收查询到的订单信息
 	o := &model.Order{}
+	var result *gorm.DB
 	//锁定及查询订单
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-		Preload("Commodities").
-		Where("order_num=?", order.OrderNum).
-		Find(o).Error
-	if err != nil {
+	//钱包订单处理方式
+	if order.OrderType == enum.OrderTypeWallet {
+		result = tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("order_num=?", order.OrderNum).
+			Find(o)
+	} else {
+		//商品订单处理方式
+		result = tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Preload("Commodities").
+			Where("order_num=?", order.OrderNum).
+			Find(o)
+	}
+	if result.Error != nil {
 		tx.Rollback()
 		log.Println("rollBack")
 		return errors.New("取消订单失败!请重试")
 	}
-	//如果查到的订单为默认值即空结果,返回错误
-	if o.ID == 0 {
+	//如果查到的订单记录为空,返回错误
+	if result.RowsAffected == 0 {
 		tx.Rollback()
 		log.Println("rollBack")
 		return errors.New("订单不存在!请重试")
@@ -161,12 +195,17 @@ func (srv *OrderService) DropOrder(order *model.Order) error {
 		log.Println("rollBack")
 		return errors.New("订单已付款,如要取消,请申请退款")
 	}
+	if o.Status == enum.OrderStatusFinish {
+		tx.Rollback()
+		log.Println("rollBack")
+		return errors.New("订单已完成,无法取消")
+	}
 	if o.Status == enum.OrderStatusCancelled {
 		tx.Rollback()
 		log.Println("rollBack")
 		return errors.New("订单处于未活跃状态")
 	}
-	tradeClose, err := srv.PaySrv.ClosePay(o)
+	tradeClose, err := srv.PaySrvI.ClosePay(o)
 	log.Println(tradeClose.Content)
 	if err != nil {
 		tx.Rollback()
@@ -180,12 +219,14 @@ func (srv *OrderService) DropOrder(order *model.Order) error {
 		log.Println("rollBack")
 		return errors.New("取消订单失败!请重试")
 	}
-	//传入商品,空字符串事务指针将商品order_id和user_id字段更新为空(释放商品)
-	err = srv.CommodityRepo.UpdateCommoditiesOrderNumUserId(o.Commodities, &model.Order{}, tx)
-	if err != nil {
-		tx.Rollback()
-		log.Println("rollBack")
-		return errors.New("取消订单失败!请重试")
+	//对于商品订单:传入商品,空字符串事务指针将商品order_id和user_id字段更新为空(释放商品)
+	if o.OrderType == enum.OrderTypeCommodity {
+		err = srv.CommodityRepo.UpdateCommoditiesOrderNumUserId(o.Commodities, &model.Order{}, tx)
+		if err != nil {
+			tx.Rollback()
+			log.Println("rollBack")
+			return errors.New("取消订单失败!请重试")
+		}
 	}
 	//提交事务
 	err = tx.Commit().Error

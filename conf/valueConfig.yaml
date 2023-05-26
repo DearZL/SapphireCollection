@@ -25,6 +25,7 @@ storeKey:
 loginTimeout:
   admin: 10 #单位：分钟
   user: 24 #单位：小时
+
 #订单超时设置
 order:
   timeout: 20 #单位：分钟
@@ -33,6 +34,10 @@ order:
 requestLimit:
   num: 5 #单位：次
   time: 3 #单位：秒
+
+#用户钱包设置
+wallet:
+  minTopUpAmount: 10.00 #最小充值金额,单位：元
 
 #支付宝设置
 alipay:

@@ -10,13 +10,13 @@ type Commodity struct {
 	gorm.Model   `json:"gorm.Model"`
 	Hash         string    `json:"hash" gorm:"unique"`
 	Image        string    `json:"image"`
-	Price        float32   `json:"price"`
+	Price        float64   `json:"price"`
 	Name         string    `json:"name" gorm:"index"`
-	Status       bool      `json:"status"`
-	Number       int       `json:"number"`
-	Amount       int       `json:"amount" gorm:"-"`
-	OfferingDate time.Time `json:"offeringDate"`
-	OrderNum     string    `json:"orderNum"`
+	Status       bool      `json:"status"`          //状态
+	Number       int       `json:"number"`          //一组商品内的序号
+	Amount       int       `json:"amount" gorm:"-"` //数量
+	OfferingDate time.Time `json:"offeringDate"`    //发售日期
+	OrderNum     string    `json:"orderNum"`        //订单编号
 	UserId       string    `json:"userId"`
 }
 type Commodities struct {

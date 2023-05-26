@@ -9,7 +9,7 @@ import (
 
 type CommodityService struct {
 	CommodityRepo repository.CommodityRepoInterface
-	BlockSrv      *BlockService
+	BlockSrvI     BlockServiceInterface
 }
 type CommodityServiceInterface interface {
 	AddCommodities(cs *model.Commodities) error
@@ -18,8 +18,8 @@ type CommodityServiceInterface interface {
 }
 
 func (srv *CommodityService) AddCommodities(cs *model.Commodities) error {
-	tx := srv.BlockSrv.BlockRepo.GetDB().Begin()
-	err := srv.BlockSrv.AddBlock(cs, "0", tx)
+	tx := srv.BlockSrvI.GetDB().Begin()
+	err := srv.BlockSrvI.AddBlock(cs, "0", tx)
 	if err != nil {
 		tx.Rollback()
 		log.Println("rollback")
